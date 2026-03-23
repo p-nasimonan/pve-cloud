@@ -1,0 +1,142 @@
+---
+import type { Locale } from "../../i18n/index.ts";
+import { useTranslations } from "../../i18n/index.ts";
+import { css, cx } from "../../../styled-system/css";
+
+interface Props {
+  locale: Locale;
+  role: string;
+  currentPath: string;
+}
+
+const { locale, role, currentPath } = Astro.props;
+const t = useTranslations(locale);
+
+const base = (path: string) => (locale === "en" ? `/en${path}` : path);
+const isActive = (path: string) =>
+  currentPath === base(path) ||
+  currentPath.startsWith(base(path) + "/") ||
+  (locale === "en" && currentPath.startsWith(`/en${path}`));
+
+const sidebar = css({
+  width: "sidebar",
+  flexShrink: "0",
+  position: "fixed",
+  top: "0",
+  left: "0",
+  height: "100vh",
+  bg: "nav-bg",
+  display: "flex",
+  flexDirection: "column",
+  zIndex: "100",
+  overflowY: "auto",
+});
+
+const logoArea = css({
+  height: "topbar",
+  display: "flex",
+  alignItems: "center",
+  px: "4",
+  flexShrink: "0",
+  borderBottom: "1px solid {colors.nav-divider}",
+});
+
+const logoLink = css({
+  color: "text-inverse",
+  fontWeight: "700",
+  fontSize: "1rem",
+  letterSpacing: "-0.02em",
+  textDecoration: "none",
+  _hover: { textDecoration: "none" },
+});
+
+const nav = css({
+  flex: "1",
+  py: "2",
+});
+
+const sectionLabel = css({
+  px: "4",
+  pt: "3",
+  pb: "1",
+  fontSize: "0.68rem",
+  fontWeight: "600",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "nav-heading",
+});
+
+const itemBase = css({
+  display: "flex",
+  alignItems: "center",
+  gap: "2",
+  mx: "2",
+  px: "3",
+  py: "1.5",
+  borderRadius: "sm",
+  fontSize: "0.875rem",
+  color: "nav-text",
+  textDecoration: "none",
+  transition: "background 0.1s, color 0.1s",
+  borderLeft: "2px solid transparent",
+  _hover: {
+    bg: "nav-item-hover",
+    color: "nav-text-active",
+    textDecoration: "none",
+  },
+});
+
+const itemActive = css({
+  bg: "nav-item-active",
+  color: "nav-text-active",
+  borderLeftColor: "nav-indicator",
+});
+
+const divider = css({
+  height: "1px",
+  bg: "nav-divider",
+  mx: "3",
+  my: "2",
+});
+
+// SVG icon paths
+const icons = {
+  instances: `<path d="M3 4a1 1 0 011-1h8a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h8a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z"/>`,
+  admin: `<path fill-rule="evenodd" d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2a2 2 0 100 4 2 2 0 000-4zm0 5a5 5 0 00-4.546 2.916A5.986 5.986 0 008 13a5.986 5.986 0 004.546-2.084A5 5 0 008 8z" clip-rule="evenodd"/>`,
+};
+---
+
+<aside class={sidebar}>
+  <div class={logoArea}>
+    <a href={base("/")} class={logoLink}>{t("common.appName")}</a>
+  </div>
+
+  <nav class={nav}>
+    <p class={sectionLabel}>{t("nav.compute")}</p>
+    <a
+      href={base("/instances")}
+      class={cx(itemBase, isActive("/instances") ? itemActive : "")}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+        <Fragment set:html={icons.instances} />
+      </svg>
+      {t("nav.instances")}
+    </a>
+
+    {role === "admin" && (
+      <>
+        <div class={divider}></div>
+        <p class={sectionLabel}>{t("nav.adminSection")}</p>
+        <a
+          href={base("/admin")}
+          class={cx(itemBase, isActive("/admin") ? itemActive : "")}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+            <Fragment set:html={icons.admin} />
+          </svg>
+          {t("nav.admin")}
+        </a>
+      </>
+    )}
+  </nav>
+</aside>

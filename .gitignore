@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.output/
+.astro/
+styled-system/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.mock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Panda CSS
+packages/ui/styled-system/
+apps/web/styled-system/

@@ -1,0 +1,56 @@
+---
+import type { Locale } from "../../i18n/index.ts";
+import Sidebar from "./Sidebar.astro";
+import TopBar from "./TopBar.astro";
+import { css } from "../../../styled-system/css";
+import "../../styles/index.css";
+
+interface Props {
+  title: string;
+  locale: Locale;
+  me: { username: string; role: string };
+  currentPath: string;
+}
+
+const { title, locale, me, currentPath } = Astro.props;
+
+const shell = css({
+  display: "flex",
+  minHeight: "100vh",
+});
+
+const mainArea = css({
+  flex: "1",
+  marginLeft: "sidebar",
+  display: "flex",
+  flexDirection: "column",
+  minHeight: "100vh",
+});
+
+const content = css({
+  flex: "1",
+  bg: "page-bg",
+  p: "6",
+});
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} - {import.meta.env.APP_NAME ?? "pve-cloud"}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <div class={shell}>
+      <Sidebar {locale} role={me.role} {currentPath} />
+      <div class={mainArea}>
+        <TopBar {locale} username={me.username} role={me.role} {currentPath} />
+        <main class={content}>
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

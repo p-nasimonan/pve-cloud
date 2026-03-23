@@ -1,0 +1,242 @@
+---
+import AppLayout from "../../components/layout/AppLayout.astro";
+import PageHeader from "../../components/ui/PageHeader.astro";
+import StatusBadge from "../../components/ui/StatusBadge.astro";
+import { useTranslations, detectLocale } from "../../i18n/index.ts";
+import { apiGetAuthed } from "../../lib/api.ts";
+import type { Instance } from "@pve-cloud/types";
+import { css } from "../../../styled-system/css";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+const currentPath = new URL(Astro.request.url).pathname;
+
+const me = await apiGetAuthed<{ username: string; role: string }>("/api/auth/me", Astro.request);
+if (!me) return Astro.redirect("/login");
+
+const instances = await apiGetAuthed<Instance[]>("/api/instances", Astro.request) ?? [];
+
+function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+function statusLabel(status: string): string {
+  return t(`instances.status.${status}` as Parameters<typeof t>[0]);
+}
+
+// ---- styles ----
+
+const btnPrimary = css({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "1.5",
+  px: "3",
+  py: "1.5",
+  bg: "brand",
+  color: "text-inverse",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontWeight: "600",
+  cursor: "pointer",
+  border: "none",
+  textDecoration: "none",
+  transition: "background 0.15s",
+  _hover: { bg: "brand-hover", textDecoration: "none" },
+});
+
+const tableCard = css({
+  bg: "surface",
+  borderRadius: "lg",
+  shadow: "card",
+  overflow: "hidden",
+});
+
+const table = css({
+  width: "100%",
+  borderCollapse: "collapse",
+});
+
+const th = css({
+  textAlign: "left",
+  px: "4",
+  py: "2.5",
+  fontSize: "0.75rem",
+  fontWeight: "600",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: "text-secondary",
+  bg: "surface-hover",
+  borderBottom: "1px solid {colors.border}",
+});
+
+const td = css({
+  px: "4",
+  py: "3",
+  borderBottom: "1px solid {colors.border}",
+  fontSize: "0.875rem",
+  color: "text-primary",
+  verticalAlign: "middle",
+});
+
+const tdMuted = css({
+  px: "4",
+  py: "3",
+  borderBottom: "1px solid {colors.border}",
+  fontSize: "0.875rem",
+  color: "text-secondary",
+  verticalAlign: "middle",
+});
+
+const trStyle = css({
+  _hover: { bg: "surface-hover" },
+  _last: { "& td": { borderBottom: "none" } },
+});
+
+const actionRow = css({
+  display: "flex",
+  gap: "1.5",
+  flexWrap: "wrap",
+});
+
+const actionBtnBase = css({
+  px: "2",
+  py: "0.75",
+  borderRadius: "sm",
+  border: "1px solid",
+  fontSize: "0.78rem",
+  fontWeight: "500",
+  cursor: "pointer",
+  bg: "surface",
+  transition: "background 0.1s",
+  _disabled: { opacity: "0.5", cursor: "not-allowed" },
+});
+
+const actionStart  = css({ borderColor: "status-running-text", color: "status-running-text", _hover: { bg: "status-running-bg" } });
+const actionStop   = css({ borderColor: "warning", color: "warning", _hover: { bg: "warning-bg" } });
+const actionReboot = css({ borderColor: "brand", color: "brand", _hover: { bg: "brand-light" } });
+const actionDelete = css({ borderColor: "danger", color: "danger", _hover: { bg: "danger-bg" } });
+
+const emptyState = css({
+  textAlign: "center",
+  py: "16",
+  bg: "surface",
+  borderRadius: "lg",
+  shadow: "card",
+});
+
+const emptyTitle = css({
+  fontSize: "1rem",
+  fontWeight: "600",
+  color: "text-primary",
+  mb: "1",
+});
+
+const emptyHint = css({
+  fontSize: "0.875rem",
+  color: "text-secondary",
+  mb: "5",
+});
+---
+
+<AppLayout title={t("instances.title")} {locale} {me} {currentPath}>
+  <PageHeader title={t("instances.title")}>
+    <a slot="actions" href={locale === "en" ? "/en/instances/new" : "/instances/new"} class={btnPrimary}>
+      + {t("instances.create")}
+    </a>
+  </PageHeader>
+
+  {instances.length === 0 ? (
+    <div class={emptyState}>
+      <p class={emptyTitle}>{t("instances.empty")}</p>
+      <p class={emptyHint}>{t("instances.emptyHint")}</p>
+      <a href={locale === "en" ? "/en/instances/new" : "/instances/new"} class={btnPrimary}>
+        + {t("instances.create")}
+      </a>
+    </div>
+  ) : (
+    <div class={tableCard}>
+      <table class={table}>
+        <thead>
+          <tr>
+            <th class={th}>{t("instances.table.name")}</th>
+            <th class={th}>{t("instances.table.status")}</th>
+            <th class={th}>{t("instances.table.flavor")}</th>
+            <th class={th}>{t("instances.table.ip")}</th>
+            <th class={th}>{t("instances.table.uptime")}</th>
+            <th class={th}>{t("instances.table.actions")}</th>
+          </tr>
+        </thead>
+        <tbody
+          id="instance-table-body"
+          data-confirm-delete={t("instances.actions.confirmDelete")}
+        >
+          {instances.map((inst) => (
+            <tr class={trStyle} data-vmid={inst.vmid} data-node={inst.node}>
+              <td class={td} style="font-weight:500">{inst.name}</td>
+              <td class={td}>
+                <StatusBadge status={inst.status as "running" | "stopped" | "paused" | "unknown"}>
+                  {statusLabel(inst.status)}
+                </StatusBadge>
+              </td>
+              <td class={tdMuted}>{inst.flavorName || inst.flavorId || "—"}</td>
+              <td class={tdMuted}>{inst.ipv4 ?? "—"}</td>
+              <td class={tdMuted}>{inst.uptime ? formatUptime(inst.uptime) : "—"}</td>
+              <td class={td}>
+                <div class={actionRow}>
+                  {inst.status === "stopped" && (
+                    <button class={`${actionBtnBase} ${actionStart}`} data-action="start" data-vmid={inst.vmid} data-node={inst.node}>
+                      {t("instances.actions.start")}
+                    </button>
+                  )}
+                  {inst.status === "running" && (
+                    <>
+                      <button class={`${actionBtnBase} ${actionStop}`} data-action="stop" data-vmid={inst.vmid} data-node={inst.node}>
+                        {t("instances.actions.stop")}
+                      </button>
+                      <button class={`${actionBtnBase} ${actionReboot}`} data-action="reboot" data-vmid={inst.vmid} data-node={inst.node}>
+                        {t("instances.actions.reboot")}
+                      </button>
+                    </>
+                  )}
+                  <button class={`${actionBtnBase} ${actionDelete}`} data-action="delete" data-vmid={inst.vmid} data-node={inst.node}>
+                    {t("instances.actions.delete")}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AppLayout>
+
+<script>
+  const tbody = document.getElementById("instance-table-body") as HTMLElement;
+  const confirmDelete = tbody?.dataset.confirmDelete ?? "";
+
+  document.addEventListener("click", async (e) => {
+    const btn = (e.target as Element)?.closest("[data-action]") as HTMLButtonElement | null;
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const vmid = btn.dataset.vmid;
+
+    if (action === "delete" && !confirm(confirmDelete)) return;
+
+    btn.disabled = true;
+    try {
+      const method = action === "delete" ? "DELETE" : "POST";
+      const path = action === "delete"
+        ? `/api/instances/${vmid}`
+        : `/api/instances/${vmid}/${action}`;
+      const res = await fetch(path, { method, credentials: "include" });
+      if (res.ok) window.location.reload();
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>

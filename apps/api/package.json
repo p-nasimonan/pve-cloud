@@ -1,0 +1,29 @@
+{
+  "name": "@pve-cloud/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "mock": "tsx src/mock/server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@hono/zod-validator": "^0.4.0",
+    "@pve-cloud/config-loader": "workspace:*",
+    "@pve-cloud/types": "workspace:*",
+    "bcrypt": "^5.1.1",
+    "hono": "^4.7.0",
+    "undici": "^7.24.5",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

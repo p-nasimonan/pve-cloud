@@ -1,0 +1,14 @@
+{
+  "name": "pve-cloud",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run --parallel --filter './apps/*' dev",
+    "dev:mock": "node scripts/dev-mock.mjs",
+    "build": "pnpm run --filter './packages/*' build && pnpm run --filter './apps/*' build",
+    "lint": "pnpm run --parallel --recursive lint",
+    "typecheck": "pnpm run --parallel --recursive typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

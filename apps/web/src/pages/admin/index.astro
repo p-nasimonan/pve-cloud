@@ -1,0 +1,625 @@
+---
+import AppLayout from "../../components/layout/AppLayout.astro";
+import PageHeader from "../../components/ui/PageHeader.astro";
+import { useTranslations, detectLocale } from "../../i18n/index.ts";
+import { apiGetAuthed } from "../../lib/api.ts";
+import type { Flavor, RegisteredTemplate } from "@pve-cloud/types";
+import { css } from "../../../styled-system/css";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+const currentPath = new URL(Astro.request.url).pathname;
+
+const me = await apiGetAuthed<{ username: string; role: string }>("/api/auth/me", Astro.request);
+if (!me) return Astro.redirect("/login");
+if (me.role !== "admin") return Astro.redirect("/");
+
+const [_flavors, _templates] = await Promise.all([
+  apiGetAuthed<Flavor[]>("/api/flavors", Astro.request),
+  apiGetAuthed<RegisteredTemplate[]>("/api/templates", Astro.request),
+]);
+const flavors = _flavors ?? [];
+const templates = _templates ?? [];
+
+// ---- styles ----
+
+const tabBar = css({
+  display: "flex",
+  borderBottom: "2px solid {colors.border}",
+  mb: "5",
+  gap: "0",
+});
+
+const tabBtnBase = css({
+  px: "4",
+  py: "2.5",
+  bg: "transparent",
+  border: "none",
+  borderBottom: "2px solid transparent",
+  fontSize: "0.9rem",
+  fontWeight: "500",
+  color: "text-secondary",
+  cursor: "pointer",
+  mb: "-2px",
+  transition: "color 0.15s, border-color 0.15s",
+  _hover: { color: "text-primary" },
+});
+
+const tabBtnActive = css({
+  color: "brand",
+  borderBottomColor: "brand",
+  fontWeight: "600",
+});
+
+const panelHeader = css({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  mb: "4",
+});
+
+const panelTitle = css({
+  fontSize: "1rem",
+  fontWeight: "600",
+  color: "text-primary",
+});
+
+const btnGroup = css({ display: "flex", gap: "2" });
+
+const btnPrimary = css({
+  display: "inline-flex",
+  alignItems: "center",
+  px: "3",
+  py: "1.5",
+  bg: "brand",
+  color: "text-inverse",
+  border: "none",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontWeight: "600",
+  cursor: "pointer",
+  transition: "background 0.15s",
+  _hover: { bg: "brand-hover" },
+});
+
+const btnOutline = css({
+  display: "inline-flex",
+  alignItems: "center",
+  px: "3",
+  py: "1.5",
+  bg: "surface",
+  color: "text-secondary",
+  border: "1px solid {colors.border}",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontWeight: "500",
+  cursor: "pointer",
+  transition: "background 0.15s",
+  _hover: { bg: "surface-hover", color: "text-primary" },
+});
+
+const btnGhost = css({
+  px: "3",
+  py: "1.5",
+  bg: "transparent",
+  color: "text-secondary",
+  border: "1px solid {colors.border}",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  cursor: "pointer",
+  _hover: { bg: "surface-hover" },
+});
+
+const formCard = css({
+  bg: "surface",
+  borderRadius: "lg",
+  shadow: "card",
+  p: "4",
+  mb: "4",
+});
+
+const formCardTitle = css({
+  fontSize: "0.9rem",
+  fontWeight: "600",
+  color: "text-primary",
+  mb: "3",
+});
+
+const formGrid = css({
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  gap: "3",
+  mb: "3",
+});
+
+const field = css({
+  display: "flex",
+  flexDirection: "column",
+  gap: "1",
+});
+
+const fieldLabel = css({
+  fontSize: "0.8rem",
+  fontWeight: "500",
+  color: "text-secondary",
+});
+
+const input = css({
+  px: "2.5",
+  py: "1.5",
+  border: "1px solid {colors.border}",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontFamily: "inherit",
+  color: "text-primary",
+  bg: "surface",
+  outline: "none",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  _focus: { borderColor: "border-focus", boxShadow: "0 0 0 3px {colors.brand-light}" },
+});
+
+const checkboxLabel = css({
+  display: "flex",
+  alignItems: "center",
+  gap: "2",
+  fontSize: "0.875rem",
+  color: "text-primary",
+  cursor: "pointer",
+  mt: "1",
+});
+
+const formActions = css({ display: "flex", gap: "2" });
+
+const tableCard = css({
+  bg: "surface",
+  borderRadius: "lg",
+  shadow: "card",
+  overflow: "hidden",
+});
+
+const table = css({ width: "100%", borderCollapse: "collapse" });
+
+const th = css({
+  textAlign: "left",
+  px: "4",
+  py: "2.5",
+  fontSize: "0.75rem",
+  fontWeight: "600",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: "text-secondary",
+  bg: "surface-hover",
+  borderBottom: "1px solid {colors.border}",
+});
+
+const td = css({
+  px: "4",
+  py: "2.5",
+  borderBottom: "1px solid {colors.border}",
+  fontSize: "0.875rem",
+  color: "text-primary",
+  verticalAlign: "middle",
+});
+
+const tdMuted = css({
+  px: "4",
+  py: "2.5",
+  borderBottom: "1px solid {colors.border}",
+  fontSize: "0.875rem",
+  color: "text-secondary",
+  verticalAlign: "middle",
+});
+
+const trStyle = css({
+  _last: { "& td": { borderBottom: "none" } },
+  _hover: { bg: "surface-hover" },
+});
+
+const badgeOn  = css({ display: "inline-block", px: "2", py: "0.25", bg: "status-running-bg", color: "status-running-text", borderRadius: "full", fontSize: "0.78rem", fontWeight: "600" });
+const badgeOff = css({ display: "inline-block", px: "2", py: "0.25", bg: "status-stopped-bg", color: "text-muted", borderRadius: "full", fontSize: "0.78rem", fontWeight: "600" });
+
+const actionRow = css({ display: "flex", gap: "1.5" });
+
+const actionEdit   = css({ px: "2", py: "0.75", borderRadius: "sm", border: "1px solid {colors.brand}", color: "brand", fontSize: "0.78rem", fontWeight: "500", cursor: "pointer", bg: "surface", _hover: { bg: "brand-light" } });
+const actionDelete = css({ px: "2", py: "0.75", borderRadius: "sm", border: "1px solid {colors.danger}", color: "danger", fontSize: "0.78rem", fontWeight: "500", cursor: "pointer", bg: "surface", _hover: { bg: "danger-bg" } });
+
+const emptyMsg = css({ color: "text-muted", fontSize: "0.9rem", py: "5", px: "4" });
+
+const scanBlock = css({
+  bg: "surface-hover",
+  border: "1px solid {colors.border}",
+  borderRadius: "lg",
+  p: "3",
+  mb: "4",
+});
+
+const scanBlockTitle = css({ fontSize: "0.875rem", fontWeight: "600", color: "text-primary", mb: "2" });
+---
+
+<AppLayout title={t("admin.title")} {locale} {me} {currentPath}>
+  <PageHeader title={t("admin.title")} />
+
+  <!-- Tabs -->
+  <div class={tabBar}>
+    <button class={`${tabBtnBase} ${tabBtnActive}`} data-tab="flavors" id="tab-btn-flavors">
+      {t("admin.tabs.flavors")}
+    </button>
+    <button class={tabBtnBase} data-tab="templates" id="tab-btn-templates">
+      {t("admin.tabs.templates")}
+    </button>
+  </div>
+
+  <!-- Flavors Tab -->
+  <div id="tab-flavors">
+    <div class={panelHeader}>
+      <span class={panelTitle}>{t("admin.flavors.title")}</span>
+      <button class={btnPrimary} id="add-flavor-btn">+ {t("admin.flavors.addTitle")}</button>
+    </div>
+
+    <div id="flavor-form-wrap" class={formCard} hidden>
+      <p class={formCardTitle} id="flavor-form-title">{t("admin.flavors.addTitle")}</p>
+      <form id="flavor-form">
+        <input type="hidden" id="flavor-id" name="id" />
+        <div class={formGrid}>
+          <div class={field}>
+            <label class={fieldLabel} for="flavor-name">{t("admin.flavors.fields.name")}</label>
+            <input class={input} type="text" id="flavor-name" name="name" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="flavor-cpu">{t("admin.flavors.fields.cpu")}</label>
+            <input class={input} type="number" id="flavor-cpu" name="cpu" min="1" max="128" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="flavor-mem">{t("admin.flavors.fields.memoryMb")}</label>
+            <input class={input} type="number" id="flavor-mem" name="memoryMb" min="128" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="flavor-disk">{t("admin.flavors.fields.diskGb")}</label>
+            <input class={input} type="number" id="flavor-disk" name="diskGb" min="1" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="flavor-desc">{t("admin.flavors.fields.description")}</label>
+            <input class={input} type="text" id="flavor-desc" name="description" />
+          </div>
+          <div class={field}>
+            <label class={checkboxLabel}>
+              <input type="checkbox" id="flavor-visible" name="userVisible" checked />
+              {t("admin.flavors.fields.userVisible")}
+            </label>
+          </div>
+        </div>
+        <div class={formActions}>
+          <button type="submit" class={btnPrimary}>{t("common.save")}</button>
+          <button type="button" class={btnGhost} id="cancel-flavor">{t("common.cancel")}</button>
+        </div>
+      </form>
+    </div>
+
+    {flavors.length === 0 ? (
+      <p class={emptyMsg}>{t("admin.flavors.empty")}</p>
+    ) : (
+      <div class={tableCard}>
+        <table class={table}>
+          <thead>
+            <tr>
+              <th class={th}>{t("admin.flavors.fields.name")}</th>
+              <th class={th}>{t("admin.flavors.fields.cpu")}</th>
+              <th class={th}>{t("admin.flavors.fields.memoryMb")}</th>
+              <th class={th}>{t("admin.flavors.fields.diskGb")}</th>
+              <th class={th}>{t("admin.flavors.fields.userVisible")}</th>
+              <th class={th}>{t("common.actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {flavors.map((f) => (
+              <tr class={trStyle}>
+                <td class={td} style="font-weight:500">{f.name}</td>
+                <td class={tdMuted}>{f.cpu}</td>
+                <td class={tdMuted}>{f.memoryMb} MB</td>
+                <td class={tdMuted}>{f.diskGb} GB</td>
+                <td class={td}>
+                  <span class={f.userVisible ? badgeOn : badgeOff}>
+                    {f.userVisible ? t("common.enabled") : t("common.disabled")}
+                  </span>
+                </td>
+                <td class={td}>
+                  <div class={actionRow}>
+                    <button class={actionEdit} data-flavor={JSON.stringify(f)} data-edit-flavor>
+                      {t("common.edit")}
+                    </button>
+                    <button class={actionDelete} data-delete-flavor={f.id}>
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+
+  <!-- Templates Tab -->
+  <div id="tab-templates" hidden>
+    <div class={panelHeader}>
+      <span class={panelTitle}>{t("admin.templates.title")}</span>
+      <div class={btnGroup}>
+        <button class={btnOutline} id="scan-btn">{t("admin.templates.scanButton")}</button>
+        <button class={btnPrimary} id="add-template-btn">+ {t("admin.templates.addTitle")}</button>
+      </div>
+    </div>
+
+    <div id="scan-results" class={scanBlock} hidden>
+      <p class={scanBlockTitle}>{t("admin.templates.scanTitle")}</p>
+      <div id="scan-list"></div>
+    </div>
+
+    <div id="template-form-wrap" class={formCard} hidden>
+      <p class={formCardTitle} id="template-form-title">{t("admin.templates.addTitle")}</p>
+      <form id="template-form">
+        <input type="hidden" id="template-id" name="id" />
+        <div class={formGrid}>
+          <div class={field}>
+            <label class={fieldLabel} for="tmpl-name">{t("admin.templates.fields.name")}</label>
+            <input class={input} type="text" id="tmpl-name" name="name" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="tmpl-vmid">{t("admin.templates.fields.templateVmid")}</label>
+            <input class={input} type="number" id="tmpl-vmid" name="templateVmid" min="100" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="tmpl-node">{t("admin.templates.fields.node")}</label>
+            <input class={input} type="text" id="tmpl-node" name="node" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="tmpl-os">{t("admin.templates.fields.osType")}</label>
+            <input class={input} type="text" id="tmpl-os" name="osType" placeholder="linux" required />
+          </div>
+          <div class={field}>
+            <label class={fieldLabel} for="tmpl-desc">{t("admin.templates.fields.description")}</label>
+            <input class={input} type="text" id="tmpl-desc" name="description" />
+          </div>
+          <div class={field}>
+            <label class={checkboxLabel}>
+              <input type="checkbox" id="tmpl-enabled" name="enabled" checked />
+              {t("admin.templates.fields.enabled")}
+            </label>
+          </div>
+        </div>
+        <div class={formActions}>
+          <button type="submit" class={btnPrimary}>{t("common.save")}</button>
+          <button type="button" class={btnGhost} id="cancel-template">{t("common.cancel")}</button>
+        </div>
+      </form>
+    </div>
+
+    {templates.length === 0 ? (
+      <p class={emptyMsg}>{t("admin.templates.empty")}</p>
+    ) : (
+      <div class={tableCard}>
+        <table class={table}>
+          <thead>
+            <tr>
+              <th class={th}>{t("admin.templates.fields.name")}</th>
+              <th class={th}>VMID</th>
+              <th class={th}>{t("admin.templates.fields.node")}</th>
+              <th class={th}>{t("admin.templates.fields.osType")}</th>
+              <th class={th}>{t("admin.templates.fields.enabled")}</th>
+              <th class={th}>{t("common.actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((tmpl) => (
+              <tr class={trStyle}>
+                <td class={td} style="font-weight:500">{tmpl.name}</td>
+                <td class={tdMuted}>{tmpl.templateVmid}</td>
+                <td class={tdMuted}>{tmpl.node}</td>
+                <td class={tdMuted}>{tmpl.osType}</td>
+                <td class={td}>
+                  <span class={tmpl.enabled ? badgeOn : badgeOff}>
+                    {tmpl.enabled ? t("common.enabled") : t("common.disabled")}
+                  </span>
+                </td>
+                <td class={td}>
+                  <div class={actionRow}>
+                    <button class={actionEdit} data-template={JSON.stringify(tmpl)} data-edit-template>
+                      {t("common.edit")}
+                    </button>
+                    <button class={actionDelete} data-delete-template={tmpl.id}>
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</AppLayout>
+
+<script>
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab!;
+      // Panels
+      ["flavors", "templates"].forEach((id) => {
+        const panel = document.getElementById(`tab-${id}`) as HTMLElement;
+        panel.hidden = id !== tab;
+      });
+      // Active styling - toggle a data attribute and rely on sibling logic
+      document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((b) => {
+        b.setAttribute("data-active", b.dataset.tab === tab ? "true" : "false");
+      });
+    });
+  });
+
+  // Init active state attribute
+  document.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((b) => {
+    b.setAttribute("data-active", b.dataset.tab === "flavors" ? "true" : "false");
+  });
+
+  // ── Flavor CRUD ──────────────────────────────────────────────────────────
+  const flavorFormWrap = document.getElementById("flavor-form-wrap")!;
+  const flavorForm = document.getElementById("flavor-form") as HTMLFormElement;
+  const flavorIdInput = document.getElementById("flavor-id") as HTMLInputElement;
+
+  document.getElementById("add-flavor-btn")?.addEventListener("click", () => {
+    flavorIdInput.value = "";
+    flavorForm.reset();
+    (document.getElementById("flavor-form-title") as HTMLElement).textContent =
+      flavorFormWrap.dataset.addTitle ?? "";
+    flavorFormWrap.hidden = false;
+  });
+
+  document.getElementById("cancel-flavor")?.addEventListener("click", () => {
+    flavorFormWrap.hidden = true;
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-edit-flavor]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const f = JSON.parse(btn.dataset.flavor!);
+      flavorIdInput.value = f.id;
+      (document.getElementById("flavor-name") as HTMLInputElement).value = f.name;
+      (document.getElementById("flavor-cpu") as HTMLInputElement).value = f.cpu;
+      (document.getElementById("flavor-mem") as HTMLInputElement).value = f.memoryMb;
+      (document.getElementById("flavor-disk") as HTMLInputElement).value = f.diskGb;
+      (document.getElementById("flavor-desc") as HTMLInputElement).value = f.description ?? "";
+      (document.getElementById("flavor-visible") as HTMLInputElement).checked = f.userVisible;
+      flavorFormWrap.hidden = false;
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-delete-flavor]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this flavor?")) return;
+      await fetch(`/api/flavors/${btn.dataset.deleteFlavor}`, { method: "DELETE", credentials: "include" });
+      location.reload();
+    });
+  });
+
+  flavorForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(flavorForm);
+    const id = fd.get("id") as string;
+    const payload = {
+      name: fd.get("name"),
+      cpu: Number(fd.get("cpu")),
+      memoryMb: Number(fd.get("memoryMb")),
+      diskGb: Number(fd.get("diskGb")),
+      description: fd.get("description") || undefined,
+      userVisible: fd.has("userVisible"),
+    };
+    const res = await fetch(id ? `/api/flavors/${id}` : "/api/flavors", {
+      method: id ? "PUT" : "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) location.reload();
+  });
+
+  // ── Template CRUD ─────────────────────────────────────────────────────────
+  const templateFormWrap = document.getElementById("template-form-wrap")!;
+  const templateForm = document.getElementById("template-form") as HTMLFormElement;
+  const templateIdInput = document.getElementById("template-id") as HTMLInputElement;
+
+  document.getElementById("add-template-btn")?.addEventListener("click", () => {
+    templateIdInput.value = "";
+    templateForm.reset();
+    templateFormWrap.hidden = false;
+  });
+
+  document.getElementById("cancel-template")?.addEventListener("click", () => {
+    templateFormWrap.hidden = true;
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-edit-template]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tmpl = JSON.parse(btn.dataset.template!);
+      templateIdInput.value = tmpl.id;
+      (document.getElementById("tmpl-name") as HTMLInputElement).value = tmpl.name;
+      (document.getElementById("tmpl-vmid") as HTMLInputElement).value = tmpl.templateVmid;
+      (document.getElementById("tmpl-node") as HTMLInputElement).value = tmpl.node;
+      (document.getElementById("tmpl-os") as HTMLInputElement).value = tmpl.osType;
+      (document.getElementById("tmpl-desc") as HTMLInputElement).value = tmpl.description ?? "";
+      (document.getElementById("tmpl-enabled") as HTMLInputElement).checked = tmpl.enabled;
+      templateFormWrap.hidden = false;
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-delete-template]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this template?")) return;
+      await fetch(`/api/templates/${btn.dataset.deleteTemplate}`, { method: "DELETE", credentials: "include" });
+      location.reload();
+    });
+  });
+
+  templateForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(templateForm);
+    const id = fd.get("id") as string;
+    const payload = {
+      name: fd.get("name"),
+      templateVmid: Number(fd.get("templateVmid")),
+      node: fd.get("node"),
+      osType: fd.get("osType"),
+      description: fd.get("description") || undefined,
+      enabled: fd.has("enabled"),
+    };
+    const res = await fetch(id ? `/api/templates/${id}` : "/api/templates", {
+      method: id ? "PUT" : "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) location.reload();
+  });
+
+  // ── Scan ──────────────────────────────────────────────────────────────────
+  document.getElementById("scan-btn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("scan-btn") as HTMLButtonElement;
+    btn.disabled = true;
+    const scanResults = document.getElementById("scan-results")!;
+    const scanList = document.getElementById("scan-list")!;
+    scanList.textContent = "Scanning...";
+    scanResults.hidden = false;
+
+    try {
+      const res = await fetch("/api/templates/scan", { credentials: "include" });
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        scanList.textContent = "No template VMs found.";
+      } else {
+        scanList.innerHTML = data
+          .map((item: { node: string; vmid: number; name: string; osType: string }) =>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--colors-border);font-size:0.875rem">
+              <span><strong>${item.name}</strong> (VMID ${item.vmid}) — ${item.node}</span>
+              <button
+                style="padding:0.25rem 0.75rem;background:var(--colors-brand);color:white;border:none;border-radius:4px;font-size:0.8rem;cursor:pointer"
+                data-scan-name="${item.name}" data-scan-vmid="${item.vmid}" data-scan-node="${item.node}" data-scan-os="${item.osType}"
+              >Register</button>
+            </div>`
+          )
+          .join("");
+
+        scanList.querySelectorAll<HTMLButtonElement>("[data-scan-vmid]").forEach((regBtn) => {
+          regBtn.addEventListener("click", () => {
+            templateIdInput.value = "";
+            (document.getElementById("tmpl-name") as HTMLInputElement).value = regBtn.dataset.scanName ?? "";
+            (document.getElementById("tmpl-vmid") as HTMLInputElement).value = regBtn.dataset.scanVmid ?? "";
+            (document.getElementById("tmpl-node") as HTMLInputElement).value = regBtn.dataset.scanNode ?? "";
+            (document.getElementById("tmpl-os") as HTMLInputElement).value = regBtn.dataset.scanOs ?? "";
+            templateFormWrap.hidden = false;
+          });
+        });
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>

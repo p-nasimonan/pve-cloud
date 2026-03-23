@@ -1,0 +1,301 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { useTranslations, detectLocale } from "../i18n/index.ts";
+import { apiGet } from "../lib/api.ts";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+
+const setupStatus = await apiGet<{ status: string; hasAdmin: boolean }>("/api/setup/status");
+if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
+  return Astro.redirect("/");
+}
+---
+
+<Layout title={t("setup.title")} {locale}>
+  <div class="setup-container">
+    <div class="setup-card">
+      <div class="setup-header">
+        <h1>{t("common.appName")}</h1>
+        <p>{t("setup.title")}</p>
+      </div>
+
+      <form
+        id="setup-form"
+        data-msg-password-mismatch={t("setup.errorPasswordMismatch")}
+        data-msg-submitting={t("setup.submitting")}
+        data-msg-submit={t("setup.submit")}
+        data-msg-success={t("setup.successMessage")}
+      >
+        <fieldset>
+          <legend>{t("setup.step1Title")}</legend>
+
+          <div class="field">
+            <label for="pve-host">{t("setup.fields.host")}</label>
+            <input
+              type="text"
+              id="pve-host"
+              name="host"
+              placeholder={t("setup.fields.hostPlaceholder")}
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="pve-port">{t("setup.fields.port")}</label>
+            <input
+              type="number"
+              id="pve-port"
+              name="port"
+              value="8006"
+              min="1"
+              max="65535"
+            />
+          </div>
+
+          <div class="field">
+            <label for="pve-token-id">{t("setup.fields.tokenId")}</label>
+            <input
+              type="text"
+              id="pve-token-id"
+              name="tokenId"
+              placeholder={t("setup.fields.tokenIdPlaceholder")}
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="pve-token-secret">{t("setup.fields.tokenSecret")}</label>
+            <input
+              type="password"
+              id="pve-token-secret"
+              name="tokenSecret"
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              required
+            />
+          </div>
+
+          <div class="field checkbox">
+            <label>
+              <input type="checkbox" id="pve-insecure" name="allowInsecure" />
+              {t("setup.fields.allowInsecure")}
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>{t("setup.step2Title")}</legend>
+
+          <div class="field">
+            <label for="admin-username">{t("setup.fields.adminUsername")}</label>
+            <input
+              type="text"
+              id="admin-username"
+              name="adminUsername"
+              placeholder={t("setup.fields.adminUsernamePlaceholder")}
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="admin-password">{t("setup.fields.password")}</label>
+            <input
+              type="password"
+              id="admin-password"
+              name="adminPassword"
+              minlength="8"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="admin-password-confirm">{t("setup.fields.passwordConfirm")}</label>
+            <input
+              type="password"
+              id="admin-password-confirm"
+              name="adminPasswordConfirm"
+              minlength="8"
+              required
+            />
+          </div>
+        </fieldset>
+
+        <div id="error-message" class="error" hidden></div>
+        <div id="success-message" class="success" hidden></div>
+
+        <button type="submit" id="submit-btn">
+          {t("setup.submit")}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("setup-form") as HTMLFormElement;
+    const errorEl = document.getElementById("error-message")!;
+    const successEl = document.getElementById("success-message")!;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+    const msgPasswordMismatch = form.dataset.msgPasswordMismatch!;
+    const msgSubmitting = form.dataset.msgSubmitting!;
+    const msgSubmit = form.dataset.msgSubmit!;
+    const msgSuccess = form.dataset.msgSuccess!;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.hidden = true;
+      successEl.hidden = true;
+
+      const password = (document.getElementById("admin-password") as HTMLInputElement).value;
+      const confirm = (document.getElementById("admin-password-confirm") as HTMLInputElement).value;
+
+      if (password !== confirm) {
+        errorEl.textContent = msgPasswordMismatch;
+        errorEl.hidden = false;
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = msgSubmitting;
+
+      const payload = {
+        proxmox: {
+          host: (document.getElementById("pve-host") as HTMLInputElement).value,
+          port: Number((document.getElementById("pve-port") as HTMLInputElement).value),
+          tokenId: (document.getElementById("pve-token-id") as HTMLInputElement).value,
+          tokenSecret: (document.getElementById("pve-token-secret") as HTMLInputElement).value,
+          allowInsecure: (document.getElementById("pve-insecure") as HTMLInputElement).checked,
+        },
+        admin: {
+          username: (document.getElementById("admin-username") as HTMLInputElement).value,
+          password,
+        },
+      };
+
+      try {
+        const res = await fetch("/api/setup/initialize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Setup failed");
+
+        successEl.textContent = msgSuccess.replace("{version}", data.proxmoxVersion?.version ?? "");
+        successEl.hidden = false;
+        setTimeout(() => { window.location.href = "/"; }, 1500);
+      } catch (err) {
+        errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
+        errorEl.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = msgSubmit;
+      }
+    });
+  </script>
+
+  <style>
+    .setup-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .setup-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 520px;
+    }
+    .setup-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .setup-header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .setup-header p {
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+    fieldset {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    legend {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #475569;
+      padding: 0 0.5rem;
+    }
+    .field { margin-bottom: 1rem; }
+    .field:last-child { margin-bottom: 0; }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #334155;
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .checkbox label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .checkbox input[type="checkbox"] { width: auto; }
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    .success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #16a34a;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    button[type="submit"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button[type="submit"]:hover:not(:disabled) { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</Layout>

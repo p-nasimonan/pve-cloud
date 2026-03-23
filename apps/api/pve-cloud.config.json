@@ -1,0 +1,22 @@
+{
+  "flavors": [
+    {
+      "id": "3a8cc761-5211-4659-83cc-64dffb599955",
+      "name": "a",
+      "cpu": 1,
+      "memoryMb": 128,
+      "diskGb": 20,
+      "userVisible": true
+    }
+  ],
+  "templates": [
+    {
+      "id": "006a3071-7399-47eb-888a-f2e89a4e43de",
+      "name": "ubuntu-template",
+      "templateVmid": 100,
+      "node": "pve-node1",
+      "osType": "linux",
+      "enabled": true
+    }
+  ]
+}

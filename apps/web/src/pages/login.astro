@@ -1,0 +1,150 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { useTranslations, detectLocale } from "../i18n/index.ts";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+---
+
+<Layout title={t("login.title")} {locale}>
+  <div class="login-container">
+    <div class="login-card">
+      <h1>{t("common.appName")}</h1>
+      <p class="subtitle">{t("login.subtitle")}</p>
+
+      <form
+        id="login-form"
+        data-msg-submitting={t("login.submitting")}
+        data-msg-submit={t("login.submit")}
+      >
+        <div class="field">
+          <label for="username">{t("login.username")}</label>
+          <input type="text" id="username" name="username" required autofocus />
+        </div>
+
+        <div class="field">
+          <label for="password">{t("login.password")}</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+
+        <div id="error-message" class="error" hidden></div>
+
+        <button type="submit" id="submit-btn">
+          {t("login.submit")}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("login-form") as HTMLFormElement;
+    const errorEl = document.getElementById("error-message")!;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+    const msgSubmitting = form.dataset.msgSubmitting!;
+    const msgSubmit = form.dataset.msgSubmit!;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = msgSubmitting;
+
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: (document.getElementById("username") as HTMLInputElement).value,
+            password: (document.getElementById("password") as HTMLInputElement).value,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Login failed");
+
+        localStorage.setItem("pve-cloud-token", data.token);
+        localStorage.setItem("pve-cloud-user", data.username);
+        window.location.href = "/instances";
+      } catch (err) {
+        errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
+        errorEl.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = msgSubmit;
+      }
+    });
+  </script>
+
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .login-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .subtitle {
+      color: #64748b;
+      margin: 0.25rem 0 2rem;
+    }
+    form { text-align: left; }
+    .field { margin-bottom: 1rem; }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #334155;
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    button[type="submit"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button[type="submit"]:hover:not(:disabled) { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</Layout>

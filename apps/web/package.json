@@ -1,0 +1,22 @@
+{
+  "name": "@pve-cloud/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "prepare": "panda codegen"
+  },
+  "dependencies": {
+    "astro": "^5.7.0",
+    "@pve-cloud/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.0",
+    "@pandacss/dev": "^0.52.0",
+    "typescript": "^5.7.0"
+  }
+}

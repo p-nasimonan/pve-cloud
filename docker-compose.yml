@@ -1,0 +1,15 @@
+services:
+  proxmox:
+    image: ghcr.io/longqt-sea/proxmox-ve:latest
+    container_name: pve-cloud-proxmox
+    privileged: true
+    ports:
+      - "8006:8006"
+    environment:
+      - HOSTNAME=pve
+    volumes:
+      - proxmox-data:/var/lib/vz
+    restart: unless-stopped
+
+volumes:
+  proxmox-data:

@@ -1,0 +1,144 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { useTranslations, detectLocale } from "../i18n/index.ts";
+import { apiGet } from "../lib/api.ts";
+import { css } from "../../styled-system/css";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+
+const setupStatus = await apiGet<{ status: string; hasAdmin: boolean }>("/api/setup/status")
+  ?? { status: "unconfigured", hasAdmin: false };
+
+if (setupStatus.status === "unconfigured" || !setupStatus.hasAdmin) {
+  return Astro.redirect("/setup");
+}
+
+// If already logged in, skip the landing page
+import { apiGetAuthed } from "../lib/api.ts";
+const me = await apiGetAuthed<{ username: string }>("/api/auth/me", Astro.request);
+if (me) return Astro.redirect("/instances");
+
+const hero = css({
+  background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+  color: "white",
+  py: "20",
+  px: "6",
+});
+
+const heroInner = css({
+  maxWidth: "720px",
+  margin: "0 auto",
+  textAlign: "center",
+});
+
+const heroTitle = css({
+  fontSize: "clamp(2rem, 5vw, 3rem)",
+  fontWeight: "800",
+  lineHeight: "1.2",
+  mb: "5",
+});
+
+const heroAccent = css({ color: "#60a5fa" });
+
+const heroSub = css({
+  fontSize: "1.125rem",
+  color: "#94a3b8",
+  mb: "10",
+  lineHeight: "1.7",
+});
+
+const heroActions = css({
+  display: "flex",
+  gap: "3",
+  justifyContent: "center",
+  flexWrap: "wrap",
+});
+
+const btnPrimary = css({
+  display: "inline-block",
+  px: "6",
+  py: "3",
+  bg: "brand",
+  color: "text-inverse",
+  borderRadius: "lg",
+  fontWeight: "600",
+  fontSize: "0.95rem",
+  textDecoration: "none",
+  transition: "background 0.15s",
+  _hover: { bg: "brand-hover", textDecoration: "none" },
+});
+
+const btnSecondary = css({
+  display: "inline-block",
+  px: "6",
+  py: "3",
+  bg: "#334155",
+  color: "#e2e8f0",
+  borderRadius: "lg",
+  fontWeight: "600",
+  fontSize: "0.95rem",
+  textDecoration: "none",
+  _hover: { bg: "#475569", textDecoration: "none" },
+});
+
+const features = css({ py: "16", px: "6" });
+
+const featuresInner = css({
+  maxWidth: "1000px",
+  margin: "0 auto",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "5",
+});
+
+const featureCard = css({
+  bg: "surface",
+  borderRadius: "xl",
+  p: "8",
+  shadow: "card",
+});
+
+const featureIcon = css({ fontSize: "2rem", mb: "4" });
+const featureTitle = css({ fontSize: "1.1rem", fontWeight: "600", mb: "2", color: "text-primary" });
+const featureBody = css({ color: "text-secondary", lineHeight: "1.6", fontSize: "0.925rem" });
+---
+
+<Layout title={t("nav.home")} {locale}>
+  <main>
+    <section class={hero}>
+      <div class={heroInner}>
+        <h1 class={heroTitle}>
+          {t("landing.heroTitle").split("\n").map((line, i) => (
+            <span class={i === 1 ? heroAccent : ""}>{line}<br /></span>
+          ))}
+        </h1>
+        <p class={heroSub}>{t("landing.heroSubtitle")}</p>
+        <div class={heroActions}>
+          <a href="/instances" class={btnPrimary}>{t("landing.ctaCreate")}</a>
+          <a href="/instances" class={btnSecondary}>{t("landing.ctaInstances")}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class={features}>
+      <div class={featuresInner}>
+        <div class={featureCard}>
+          <div class={featureIcon}>⚡</div>
+          <h3 class={featureTitle}>{t("landing.feature1Title")}</h3>
+          <p class={featureBody}>{t("landing.feature1Body")}</p>
+        </div>
+        <div class={featureCard}>
+          <div class={featureIcon}>🎯</div>
+          <h3 class={featureTitle}>{t("landing.feature2Title")}</h3>
+          <p class={featureBody}>{t("landing.feature2Body")}</p>
+        </div>
+        <div class={featureCard}>
+          <div class={featureIcon}>🔐</div>
+          <h3 class={featureTitle}>{t("landing.feature3Title")}</h3>
+          <p class={featureBody}>{t("landing.feature3Body")}</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

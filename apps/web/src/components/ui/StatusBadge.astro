@@ -1,0 +1,51 @@
+---
+import { css, cx } from "../../../styled-system/css";
+
+type Status = "running" | "stopped" | "paused" | "unknown";
+
+interface Props {
+  status: Status;
+}
+
+const { status } = Astro.props;
+
+const base = css({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "1.5",
+  fontSize: "0.8rem",
+  fontWeight: "500",
+  px: "2",
+  py: "0.5",
+  borderRadius: "full",
+});
+
+const dot = css({
+  width: "6px",
+  height: "6px",
+  borderRadius: "full",
+  flexShrink: "0",
+});
+
+const variants: Record<string, { badge: string; dot: string }> = {
+  running: {
+    badge: css({ bg: "status-running-bg", color: "status-running-text" }),
+    dot:   css({ bg: "status-running-dot" }),
+  },
+  stopped: {
+    badge: css({ bg: "status-stopped-bg", color: "status-stopped-text" }),
+    dot:   css({ bg: "status-stopped-dot" }),
+  },
+  paused: {
+    badge: css({ bg: "status-paused-bg", color: "status-paused-text" }),
+    dot:   css({ bg: "status-paused-dot" }),
+  },
+};
+
+const v = variants[status] ?? variants.stopped;
+---
+
+<span class={cx(base, v.badge)}>
+  <span class={cx(dot, v.dot)}></span>
+  <slot />
+</span>

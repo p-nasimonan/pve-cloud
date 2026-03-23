@@ -1,0 +1,30 @@
+---
+import { css, cx } from "../../../styled-system/css";
+
+interface Props {
+  variant: "error" | "success" | "warning";
+  id?: string;
+  hidden?: boolean;
+}
+
+const { variant, id, hidden = false } = Astro.props;
+
+const base = css({
+  px: "3",
+  py: "2.5",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  border: "1px solid",
+  lineHeight: "1.5",
+});
+
+const variants = {
+  error:   css({ bg: "danger-bg",  borderColor: "danger-border",  color: "danger" }),
+  success: css({ bg: "success-bg", borderColor: "success-border", color: "success" }),
+  warning: css({ bg: "warning-bg", borderColor: "warning-border", color: "warning" }),
+};
+---
+
+<div id={id} class={cx(base, variants[variant])} hidden={hidden}>
+  <slot />
+</div>

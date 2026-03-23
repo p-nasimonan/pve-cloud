@@ -1,0 +1,377 @@
+---
+import AppLayout from "../../components/layout/AppLayout.astro";
+import PageHeader from "../../components/ui/PageHeader.astro";
+import { useTranslations, detectLocale } from "../../i18n/index.ts";
+import { apiGetAuthed } from "../../lib/api.ts";
+import type { Flavor, RegisteredTemplate } from "@pve-cloud/types";
+import { css } from "../../../styled-system/css";
+
+const locale = detectLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+const currentPath = new URL(Astro.request.url).pathname;
+
+const me = await apiGetAuthed<{ username: string; role: string }>("/api/auth/me", Astro.request);
+if (!me) return Astro.redirect("/login");
+
+const [_flavors, _templates] = await Promise.all([
+  apiGetAuthed<Flavor[]>("/api/flavors", Astro.request),
+  apiGetAuthed<RegisteredTemplate[]>("/api/templates", Astro.request),
+]);
+const flavors = _flavors ?? [];
+const templates = _templates ?? [];
+
+function fmtMem(mb: number) {
+  return mb >= 1024 ? `${mb / 1024}GB` : `${mb}MB`;
+}
+
+// ---- styles ----
+
+const backLink = css({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "1",
+  fontSize: "0.875rem",
+  color: "text-secondary",
+  mb: "4",
+  textDecoration: "none",
+  _hover: { color: "text-primary", textDecoration: "none" },
+});
+
+const notice = css({
+  px: "4",
+  py: "3",
+  bg: "warning-bg",
+  border: "1px solid {colors.warning-border}",
+  borderRadius: "md",
+  color: "warning",
+  fontSize: "0.875rem",
+});
+
+const section = css({
+  bg: "surface",
+  borderRadius: "lg",
+  shadow: "card",
+  mb: "4",
+  overflow: "hidden",
+});
+
+const sectionHeader = css({
+  px: "4",
+  py: "3",
+  borderBottom: "1px solid {colors.border}",
+  fontSize: "0.875rem",
+  fontWeight: "600",
+  color: "text-secondary",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  bg: "surface-hover",
+});
+
+const sectionBody = css({
+  p: "4",
+});
+
+const cardGrid = css({
+  display: "grid",
+  gap: "3",
+  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+});
+
+const cardLabel = css({
+  display: "flex",
+  gap: "3",
+  p: "3",
+  border: "2px solid {colors.border}",
+  borderRadius: "md",
+  cursor: "pointer",
+  transition: "border-color 0.15s",
+  "& input[type=radio]": { accentColor: "var(--colors-brand)" },
+  "&:has(input:checked)": { borderColor: "brand", bg: "brand-light" },
+  _hover: { borderColor: "brand" },
+});
+
+const cardInfo = css({
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.25rem",
+});
+
+const cardName = css({
+  fontWeight: "600",
+  fontSize: "0.875rem",
+  color: "text-primary",
+});
+
+const cardDesc = css({
+  fontSize: "0.78rem",
+  color: "text-secondary",
+});
+
+const specRow = css({
+  display: "flex",
+  gap: "1.5",
+  flexWrap: "wrap",
+  mt: "1",
+});
+
+const specTag = css({
+  fontSize: "0.75rem",
+  bg: "surface-hover",
+  border: "1px solid {colors.border}",
+  px: "1.5",
+  py: "0.25",
+  borderRadius: "sm",
+  color: "text-secondary",
+});
+
+const fieldGrid = css({
+  display: "grid",
+  gap: "3",
+});
+
+const field = css({
+  display: "flex",
+  flexDirection: "column",
+  gap: "1",
+});
+
+const fieldLabel = css({
+  fontSize: "0.875rem",
+  fontWeight: "500",
+  color: "text-primary",
+});
+
+const input = css({
+  px: "3",
+  py: "1.75",
+  border: "1px solid {colors.border}",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontFamily: "inherit",
+  color: "text-primary",
+  bg: "surface",
+  outline: "none",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  _focus: {
+    borderColor: "border-focus",
+    boxShadow: "0 0 0 3px {colors.brand-light}",
+  },
+});
+
+const textarea = css({
+  px: "3",
+  py: "1.75",
+  border: "1px solid {colors.border}",
+  borderRadius: "md",
+  fontSize: "0.875rem",
+  fontFamily: "inherit",
+  color: "text-primary",
+  bg: "surface",
+  outline: "none",
+  resize: "vertical",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  _focus: {
+    borderColor: "border-focus",
+    boxShadow: "0 0 0 3px {colors.brand-light}",
+  },
+});
+
+const fieldHint = css({
+  fontSize: "0.78rem",
+  color: "text-muted",
+});
+
+const checkboxLabel = css({
+  display: "flex",
+  alignItems: "center",
+  gap: "2",
+  fontSize: "0.875rem",
+  color: "text-primary",
+  cursor: "pointer",
+});
+
+const submitBtn = css({
+  width: "100%",
+  py: "2.5",
+  bg: "brand",
+  color: "text-inverse",
+  border: "none",
+  borderRadius: "md",
+  fontSize: "0.9rem",
+  fontWeight: "600",
+  cursor: "pointer",
+  transition: "background 0.15s",
+  mt: "2",
+  _hover: { bg: "brand-hover" },
+  _disabled: { opacity: "0.6", cursor: "not-allowed" },
+});
+---
+
+<AppLayout title={t("createInstance.title")} {locale} {me} {currentPath}>
+  <a
+    href={locale === "en" ? "/en/instances" : "/instances"}
+    class={backLink}
+  >
+    ← {t("common.back")}
+  </a>
+
+  <PageHeader title={t("createInstance.title")} />
+
+  {flavors.length === 0 ? (
+    <p class={notice}>{t("createInstance.noFlavors")}</p>
+  ) : templates.length === 0 ? (
+    <p class={notice}>{t("createInstance.noTemplates")}</p>
+  ) : (
+    <form
+      id="create-form"
+      data-msg-submitting={t("createInstance.submitting")}
+      data-msg-submit={t("createInstance.submit")}
+      data-msg-success={t("createInstance.successMessage")}
+    >
+      <!-- Flavor -->
+      <div class={section}>
+        <div class={sectionHeader}>{t("createInstance.stepFlavor")}</div>
+        <div class={sectionBody}>
+          <div class={cardGrid}>
+            {flavors.map((f, i) => (
+              <label class={cardLabel}>
+                <input type="radio" name="flavorId" value={f.id} required checked={i === 0} />
+                <div class={cardInfo}>
+                  <span class={cardName}>{f.name}</span>
+                  {f.description && <span class={cardDesc}>{f.description}</span>}
+                  <div class={specRow}>
+                    <span class={specTag}>{t("createInstance.flavor.cpu").replace("{cpu}", String(f.cpu))}</span>
+                    <span class={specTag}>{t("createInstance.flavor.memory").replace("{memory}", fmtMem(f.memoryMb))}</span>
+                    <span class={specTag}>{t("createInstance.flavor.disk").replace("{disk}", `${f.diskGb}GB`)}</span>
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Template -->
+      <div class={section}>
+        <div class={sectionHeader}>{t("createInstance.stepTemplate")}</div>
+        <div class={sectionBody}>
+          <div class={cardGrid}>
+            {templates.map((tmpl, i) => (
+              <label class={cardLabel}>
+                <input type="radio" name="templateId" value={tmpl.id} required checked={i === 0} />
+                <div class={cardInfo}>
+                  <span class={cardName}>{tmpl.name}</span>
+                  {tmpl.description && <span class={cardDesc}>{tmpl.description}</span>}
+                  <span class={cardDesc}>{tmpl.osType}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div class={section}>
+        <div class={sectionHeader}>{t("createInstance.stepConfig")}</div>
+        <div class={sectionBody}>
+          <div class={fieldGrid}>
+            <div class={field}>
+              <label class={fieldLabel} for="name">{t("createInstance.config.name")}</label>
+              <input class={input} type="text" id="name" name="name"
+                placeholder={t("createInstance.config.namePlaceholder")}
+                pattern="[a-zA-Z0-9-]+" required />
+              <span class={fieldHint}>{t("createInstance.config.nameHint")}</span>
+            </div>
+
+            <div class={field}>
+              <label class={fieldLabel} for="sshKey">{t("createInstance.config.sshKey")}</label>
+              <textarea class={textarea} id="sshKey" name="sshPublicKey"
+                placeholder={t("createInstance.config.sshKeyPlaceholder")}
+                rows="3" required></textarea>
+            </div>
+
+            <div class={field}>
+              <label class={fieldLabel} for="ipConfig">{t("createInstance.config.ipConfig")}</label>
+              <input class={input} type="text" id="ipConfig" name="ipConfig"
+                placeholder={t("createInstance.config.ipConfigPlaceholder")} />
+            </div>
+
+            <div class={field} id="gateway-field" hidden>
+              <label class={fieldLabel} for="gateway">{t("createInstance.config.gateway")}</label>
+              <input class={input} type="text" id="gateway" name="gateway"
+                placeholder={t("createInstance.config.gatewayPlaceholder")} />
+            </div>
+
+            <label class={checkboxLabel}>
+              <input type="checkbox" name="startAfterCreate" checked />
+              {t("createInstance.config.startAfterCreate")}
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-msg" class={css({ px: "3", py: "2.5", bg: "danger-bg", border: "1px solid {colors.danger-border}", borderRadius: "md", fontSize: "0.875rem", color: "danger", mb: "3" })} hidden></div>
+      <div id="success-msg" class={css({ px: "3", py: "2.5", bg: "success-bg", border: "1px solid {colors.success-border}", borderRadius: "md", fontSize: "0.875rem", color: "success", mb: "3" })} hidden></div>
+
+      <button type="submit" id="submit-btn" class={submitBtn}>
+        {t("createInstance.submit")}
+      </button>
+    </form>
+  )}
+</AppLayout>
+
+<script>
+  document.getElementById("ipConfig")?.addEventListener("input", (e) => {
+    const val = (e.target as HTMLInputElement).value.trim();
+    (document.getElementById("gateway-field") as HTMLElement).hidden = !val;
+  });
+
+  const form = document.getElementById("create-form") as HTMLFormElement | null;
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msgSubmitting = form.dataset.msgSubmitting ?? "";
+    const msgSubmit = form.dataset.msgSubmit ?? "";
+    const msgSuccess = form.dataset.msgSuccess ?? "";
+    const errorEl = document.getElementById("error-msg") as HTMLElement;
+    const successEl = document.getElementById("success-msg") as HTMLElement;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+    errorEl.hidden = true;
+    successEl.hidden = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = msgSubmitting;
+
+    const fd = new FormData(form);
+    const ipConfig = (fd.get("ipConfig") as string | null)?.trim() || undefined;
+
+    const payload = {
+      name: fd.get("name"),
+      flavorId: fd.get("flavorId"),
+      templateId: fd.get("templateId"),
+      sshPublicKey: fd.get("sshPublicKey"),
+      ipConfig,
+      gateway: ipConfig ? (fd.get("gateway") || undefined) : undefined,
+      startAfterCreate: fd.has("startAfterCreate"),
+    };
+
+    try {
+      const res = await fetch("/api/instances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+
+      successEl.textContent = msgSuccess.replace("{vmid}", String(data.vmid));
+      successEl.hidden = false;
+      setTimeout(() => { window.location.href = "/instances"; }, 2000);
+    } catch (err) {
+      errorEl.textContent = err instanceof Error ? err.message : "Error";
+      errorEl.hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = msgSubmit;
+    }
+  });
+</script>

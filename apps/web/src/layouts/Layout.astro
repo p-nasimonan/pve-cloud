@@ -1,0 +1,24 @@
+---
+import type { Locale } from "../i18n/index.ts";
+import "../styles/index.css";
+
+interface Props {
+  title: string;
+  locale?: Locale;
+}
+
+const { title, locale = "ja" } = Astro.props;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} - pve-cloud</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
