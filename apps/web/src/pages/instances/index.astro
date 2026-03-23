@@ -7,7 +7,7 @@ import { apiGetAuthed } from "../../lib/api.ts";
 import type { Instance } from "@pve-cloud/types";
 import { css } from "../../../styled-system/css";
 
-const locale = detectLocale(Astro.currentLocale);
+const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 const currentPath = new URL(Astro.request.url).pathname;
 
@@ -143,7 +143,7 @@ const emptyHint = css({
 
 <AppLayout title={t("instances.title")} {locale} {me} {currentPath}>
   <PageHeader title={t("instances.title")}>
-    <a slot="actions" href={locale === "en" ? "/en/instances/new" : "/instances/new"} class={btnPrimary}>
+    <a slot="actions" href="/instances/new" class={btnPrimary}>
       + {t("instances.create")}
     </a>
   </PageHeader>
@@ -152,7 +152,7 @@ const emptyHint = css({
     <div class={emptyState}>
       <p class={emptyTitle}>{t("instances.empty")}</p>
       <p class={emptyHint}>{t("instances.emptyHint")}</p>
-      <a href={locale === "en" ? "/en/instances/new" : "/instances/new"} class={btnPrimary}>
+      <a href="/instances/new" class={btnPrimary}>
         + {t("instances.create")}
       </a>
     </div>

@@ -3,7 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import { useTranslations, detectLocale } from "../i18n/index.ts";
 import { apiGet } from "../lib/api.ts";
 
-const locale = detectLocale(Astro.currentLocale);
+const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 
 const setupStatus = await apiGet<{ status: string; hasAdmin: boolean }>("/api/setup/status");

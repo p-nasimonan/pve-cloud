@@ -6,7 +6,7 @@ import { apiGetAuthed } from "../../lib/api.ts";
 import type { Flavor, RegisteredTemplate } from "@pve-cloud/types";
 import { css } from "../../../styled-system/css";
 
-const locale = detectLocale(Astro.currentLocale);
+const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 const currentPath = new URL(Astro.request.url).pathname;
 
@@ -209,7 +209,7 @@ const submitBtn = css({
 
 <AppLayout title={t("createInstance.title")} {locale} {me} {currentPath}>
   <a
-    href={locale === "en" ? "/en/instances" : "/instances"}
+    href="/instances"
     class={backLink}
   >
     ← {t("common.back")}

@@ -12,11 +12,8 @@ interface Props {
 const { locale, role, currentPath } = Astro.props;
 const t = useTranslations(locale);
 
-const base = (path: string) => (locale === "en" ? `/en${path}` : path);
 const isActive = (path: string) =>
-  currentPath === base(path) ||
-  currentPath.startsWith(base(path) + "/") ||
-  (locale === "en" && currentPath.startsWith(`/en${path}`));
+  currentPath === path || currentPath.startsWith(path + "/");
 
 const sidebar = css({
   width: "sidebar",
@@ -108,13 +105,13 @@ const icons = {
 
 <aside class={sidebar}>
   <div class={logoArea}>
-    <a href={base("/")} class={logoLink}>{t("common.appName")}</a>
+    <a href="/" class={logoLink}>{t("common.appName")}</a>
   </div>
 
   <nav class={nav}>
     <p class={sectionLabel}>{t("nav.compute")}</p>
     <a
-      href={base("/instances")}
+      href="/instances"
       class={cx(itemBase, isActive("/instances") ? itemActive : "")}
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -128,7 +125,7 @@ const icons = {
         <div class={divider}></div>
         <p class={sectionLabel}>{t("nav.adminSection")}</p>
         <a
-          href={base("/admin")}
+          href="/admin"
           class={cx(itemBase, isActive("/admin") ? itemActive : "")}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">

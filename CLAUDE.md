@@ -1,1 +1,4 @@
-CSSはpandassを使うこと。理由がない場合はstyleやscriptを直接書いてはいけない。フロントエンドをhtmlの見た目だけのものと考えるのではなく、バックエンドと同じようにロジックで書いてください。
+CSSはpandassを使うこと。理由がない場合はstyleやscriptを直接書いてはいけない。
+
+
+astroにstyleやscriptタグを書くときは何か理由がある場合のみで、そうでなければTypescriptで書くべき

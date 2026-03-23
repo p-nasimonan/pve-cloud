@@ -4,7 +4,7 @@ import { useTranslations, detectLocale } from "../i18n/index.ts";
 import { apiGet } from "../lib/api.ts";
 import { css } from "../../styled-system/css";
 
-const locale = detectLocale(Astro.currentLocale);
+const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 
 const setupStatus = await apiGet<{ status: string; hasAdmin: boolean }>("/api/setup/status")

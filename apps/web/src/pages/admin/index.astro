@@ -6,7 +6,7 @@ import { apiGetAuthed } from "../../lib/api.ts";
 import type { Flavor, RegisteredTemplate } from "@pve-cloud/types";
 import { css } from "../../../styled-system/css";
 
-const locale = detectLocale(Astro.currentLocale);
+const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 const currentPath = new URL(Astro.request.url).pathname;
 

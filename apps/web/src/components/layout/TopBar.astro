@@ -7,18 +7,12 @@ interface Props {
   locale: Locale;
   username: string;
   role: string;
-  currentPath: string;
 }
 
-const { locale, username, role, currentPath } = Astro.props;
+const { locale, username, role } = Astro.props;
 const t = useTranslations(locale);
 
 const localeLabels: Record<Locale, string> = { ja: "日本語", en: "English" };
-
-function localePath(target: Locale): string {
-  if (target === "ja") return currentPath.replace(/^\/en/, "") || "/";
-  return currentPath.startsWith("/en") ? currentPath : `/en${currentPath}`;
-}
 
 const topbar = css({
   height: "topbar",
@@ -103,13 +97,13 @@ const logoutBtn = css({
 <header class={topbar}>
   <div class={langSwitcher}>
     {LOCALES.map((loc) => (
-      <a
-        href={localePath(loc)}
+      <button
         class={cx(langBtn, loc === locale ? langBtnActive : "")}
         lang={loc}
+        data-set-locale={loc}
       >
         {localeLabels[loc]}
-      </a>
+      </button>
     ))}
   </div>
 
@@ -123,6 +117,13 @@ const logoutBtn = css({
 </header>
 
 <script>
+  document.querySelectorAll<HTMLButtonElement>("[data-set-locale]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.cookie = `locale=${btn.dataset.setLocale};path=/;max-age=31536000;SameSite=Lax`;
+      location.reload();
+    });
+  });
+
   document.getElementById("topbar-logout")?.addEventListener("click", async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     window.location.href = "/login";

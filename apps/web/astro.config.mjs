@@ -5,13 +5,6 @@ export default defineConfig({
   server: {
     port: 4321,
   },
-  i18n: {
-    defaultLocale: "ja",
-    locales: ["ja", "en"],
-    routing: {
-      prefixDefaultLocale: false,
-    },
-  },
   vite: {
     server: {
       proxy: {

@@ -46,7 +46,7 @@ const content = css({
     <div class={shell}>
       <Sidebar {locale} role={me.role} {currentPath} />
       <div class={mainArea}>
-        <TopBar {locale} username={me.username} role={me.role} {currentPath} />
+        <TopBar {locale} username={me.username} role={me.role} />
         <main class={content}>
           <slot />
         </main>

@@ -35,13 +35,14 @@ export function useTranslations(locale: Locale) {
 }
 
 /**
- * Detects locale from Astro's currentLocale or Accept-Language header.
+ * Detects locale from the `locale` cookie in the request.
+ * Falls back to the default locale when no valid cookie is set.
  */
-export function detectLocale(
-  currentLocale: string | undefined,
-): Locale {
-  if (currentLocale && isLocale(currentLocale)) return currentLocale;
-  return DEFAULT_LOCALE;
+export function detectLocale(request: Request): Locale {
+  const cookie = request.headers.get("cookie") ?? "";
+  const match = cookie.match(/(?:^|;\s*)locale=([^;]+)/);
+  const val = match?.[1];
+  return isLocale(val ?? "") ? (val as Locale) : DEFAULT_LOCALE;
 }
 
 function isLocale(v: string): v is Locale {
