@@ -65,7 +65,7 @@ const t = useTranslations(locale);
 
         localStorage.setItem("pve-cloud-token", data.token);
         localStorage.setItem("pve-cloud-user", data.username);
-        window.location.href = "/instances";
+        window.location.href = "/";
       } catch (err) {
         errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
         errorEl.hidden = false;

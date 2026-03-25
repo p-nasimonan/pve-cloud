@@ -34,8 +34,8 @@ export const ja = {
   },
   setup: {
     title: "初期セットアップ",
-    step1Title: "ステップ1: Proxmox VE 接続設定",
-    step2Title: "ステップ2: 管理者アカウント作成",
+    step1Title: "ステップ1: 管理者アカウント作成",
+    step2Title: "ステップ2: Proxmox VE 接続設定",
     fields: {
       host: "ホスト / IPアドレス",
       hostPlaceholder: "192.168.1.100",
@@ -49,10 +49,16 @@ export const ja = {
       password: "パスワード",
       passwordConfirm: "パスワード（確認）",
     },
-    submit: "接続して管理者を作成",
+    pveSetupHintTitle: "コマンドでAPIトークンを自動発行する",
+    pveSetupHintDesc: "Proxmox VE のシェルに以下のコマンドを入力すると、ユーザー作成と権限設定が一括で行われ、トークンが発行されます。",
+    pveSetupCommandCopied: "コピーしました！",
+    submit: "接続を設定する",
+    submitAdmin: "管理者を作成",
     submitting: "接続中...",
+    submittingAdmin: "作成中...",
     errorPasswordMismatch: "パスワードが一致しません",
     successMessage: "Proxmox VE {version} に接続しました。リダイレクトします...",
+    adminSuccessMessage: "アカウントを作成しました。ログイン画面へ移動します...",
   },
   login: {
     title: "サインイン",

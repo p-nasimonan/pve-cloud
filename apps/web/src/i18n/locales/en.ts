@@ -31,8 +31,8 @@ export const en: Messages = {
   },
   setup: {
     title: "Initial Setup",
-    step1Title: "Step 1: Proxmox VE Connection",
-    step2Title: "Step 2: Create Admin Account",
+    step1Title: "Step 1: Create Admin Account",
+    step2Title: "Step 2: Proxmox VE Connection",
     fields: {
       host: "Host / IP Address",
       hostPlaceholder: "192.168.1.100",
@@ -46,10 +46,16 @@ export const en: Messages = {
       password: "Password",
       passwordConfirm: "Confirm Password",
     },
-    submit: "Connect & Create Admin",
+    pveSetupHintTitle: "Automatically generate API Token via Shell",
+    pveSetupHintDesc: "Run the following commands in your Proxmox VE shell to create the user, assign permissions, and issue a token.",
+    pveSetupCommandCopied: "Copied!",
+    submit: "Connect Proxmox VE",
+    submitAdmin: "Create Admin",
     submitting: "Connecting...",
+    submittingAdmin: "Creating...",
     errorPasswordMismatch: "Passwords do not match",
     successMessage: "Connected to Proxmox VE {version}. Redirecting...",
+    adminSuccessMessage: "Account created successfully. Redirecting to login...",
   },
   login: {
     title: "Sign In",
