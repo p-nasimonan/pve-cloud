@@ -3,20 +3,23 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import { ProxmoxClient } from "../proxmox/client.js";
+import { getSession } from "../middleware/auth.js";
 import type { AppState } from "../state.js";
 
-const setupSchema = z.object({
-  proxmox: z.object({
-    host: z.string().min(1),
-    port: z.number().int().min(1).max(65535).default(8006),
-    tokenId: z.string().min(1),
-    tokenSecret: z.string().min(1),
-    allowInsecure: z.boolean().default(false),
-  }),
-  admin: z.object({
-    username: z.string().min(1).max(64),
-    password: z.string().min(8),
-  }),
+const SESSION_COOKIE = "pve-cloud-session";
+const COOKIE_OPTS = "Path=/; HttpOnly; SameSite=Strict; Max-Age=86400";
+
+const adminSchema = z.object({
+  username: z.string().min(1).max(64),
+  password: z.string().min(8),
+});
+
+const proxmoxSchema = z.object({
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535).default(8006),
+  tokenId: z.string().min(1),
+  tokenSecret: z.string().min(1),
+  allowInsecure: z.boolean().default(false),
 });
 
 export function setupRoutes(state: AppState) {
@@ -31,35 +34,67 @@ export function setupRoutes(state: AppState) {
     });
   });
 
-  /** Perform initial setup: connect to Proxmox + create admin */
+  /** Perform initial setup step 1: create admin */
   app.post(
-    "/initialize",
-    zValidator("json", setupSchema),
+    "/admin",
+    zValidator("json", adminSchema),
     async (c) => {
       // Block if already configured
-      if (state.proxmoxClient && state.adminUsername) {
-        return c.json({ error: "Already configured" }, 409);
+      if (state.adminUsername) {
+        return c.json({ error: "Admin already configured" }, 409);
+      }
+
+      const body = c.req.valid("json");
+
+      // Create admin account
+      const passwordHash = await bcrypt.hash(body.password, 12);
+      state.adminUsername = body.username;
+      state.adminPasswordHash = passwordHash;
+
+      // Log the user in automatically for SPA flow
+      const token = crypto.randomUUID();
+      state.sessions.set(token, { username: body.username, role: "admin", createdAt: Date.now() });
+      c.header("Set-Cookie", `${SESSION_COOKIE}=${token}; ${COOKIE_OPTS}`);
+
+      return c.json({
+        ok: true,
+        token,
+        username: body.username,
+        role: "admin",
+      });
+    },
+  );
+
+  /** Perform initial setup step 2: connect to Proxmox */
+  app.post(
+    "/proxmox",
+    zValidator("json", proxmoxSchema),
+    async (c) => {
+      // Block if already configured
+      if (state.proxmoxClient) {
+        return c.json({ error: "Proxmox connection already configured" }, 409);
+      }
+
+      // Check auth manually because /api/setup bypasses standard middleware
+      const session = getSession(c, state);
+      if (!session || session.role !== "admin") {
+        return c.json({ error: "Unauthorized. Please log in as admin." }, 401);
       }
 
       const body = c.req.valid("json");
 
       // Test Proxmox connection
-      const client = new ProxmoxClient(body.proxmox);
+      const client = new ProxmoxClient(body);
       try {
         const version = await client.getVersion();
         state.proxmoxClient = client;
-        state.proxmoxConfig = body.proxmox;
+        state.proxmoxConfig = body;
         state.proxmoxVersion = version;
       } catch (e) {
         const message =
           e instanceof Error ? e.message : "Unknown connection error";
         return c.json({ error: `Proxmox connection failed: ${message}` }, 400);
       }
-
-      // Create admin account
-      const passwordHash = await bcrypt.hash(body.admin.password, 12);
-      state.adminUsername = body.admin.username;
-      state.adminPasswordHash = passwordHash;
 
       return c.json({
         status: "configured",

@@ -1,14 +1,24 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { useTranslations, detectLocale } from "../i18n/index.ts";
-import { apiGet } from "../lib/api.ts";
+import { apiGet, apiGetAuthed } from "../lib/api.ts";
 
 const locale = detectLocale(Astro.request);
 const t = useTranslations(locale);
 
-const setupStatus = await apiGet<{ status: string; hasAdmin: boolean }>("/api/setup/status");
+const setupStatus = await apiGet<{ status: string; hasAdmin: boolean; proxmoxConnected: boolean }>("/api/setup/status");
 if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
   return Astro.redirect("/");
+}
+
+const isInitialSetup = !setupStatus?.hasAdmin;
+const needsProxmoxOnly = setupStatus?.hasAdmin && !setupStatus?.proxmoxConnected;
+
+if (needsProxmoxOnly) {
+  const me = await apiGetAuthed<{ username: string }>("/api/auth/me", Astro.request);
+  if (!me) {
+    return Astro.redirect("/login");
+  }
 }
 ---
 
@@ -21,14 +31,85 @@ if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
       </div>
 
       <form
-        id="setup-form"
+        id="setup-admin-form"
+        style={isInitialSetup ? "" : "display: none;"}
         data-msg-password-mismatch={t("setup.errorPasswordMismatch")}
+        data-msg-submitting={t("setup.submittingAdmin")}
+        data-msg-submit={t("setup.submitAdmin")}
+        data-msg-success={t("setup.adminSuccessMessage")}
+      >
+        <fieldset>
+          <legend>{t("setup.step1Title")}</legend>
+
+          <div class="field">
+            <label for="admin-username">{t("setup.fields.adminUsername")}</label>
+            <input
+              type="text"
+              id="admin-username"
+              name="adminUsername"
+              placeholder={t("setup.fields.adminUsernamePlaceholder")}
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="admin-password">{t("setup.fields.password")}</label>
+            <input
+              type="password"
+              id="admin-password"
+              name="adminPassword"
+              minlength="8"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="admin-password-confirm">{t("setup.fields.passwordConfirm")}</label>
+            <input
+              type="password"
+              id="admin-password-confirm"
+              name="adminPasswordConfirm"
+              minlength="8"
+              required
+            />
+          </div>
+        </fieldset>
+
+        <div id="admin-error-message" class="error" hidden></div>
+        <div id="admin-success-message" class="success" hidden></div>
+
+        <button type="submit" id="admin-submit-btn">
+          {t("setup.submitAdmin")}
+        </button>
+      </form>
+
+      <form
+        id="setup-proxmox-form"
+        style={needsProxmoxOnly ? "" : "display: none;"}
         data-msg-submitting={t("setup.submitting")}
         data-msg-submit={t("setup.submit")}
         data-msg-success={t("setup.successMessage")}
       >
         <fieldset>
-          <legend>{t("setup.step1Title")}</legend>
+          <legend>{t("setup.step2Title")}</legend>
+
+          <div class="command-card">
+            <div class="command-card-header">
+              <strong>💡 {t("setup.pveSetupHintTitle")}</strong>
+            </div>
+            <div class="command-card-body">
+              <p>{t("setup.pveSetupHintDesc")}</p>
+              <div class="command-block">
+                <pre><code id="pve-setup-command">pveum user add pve-cloud@pve
+pveum acl modify / -user pve-cloud@pve -role Administrator
+pveum user token add pve-cloud@pve main --privsep 0</code></pre>
+                <button type="button" id="copy-cmd-btn" data-msg-copied={t("setup.pveSetupCommandCopied")} title="Copy">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span class="copy-text"></span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div class="field">
             <label for="pve-host">{t("setup.fields.host")}</label>
@@ -83,47 +164,10 @@ if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
           </div>
         </fieldset>
 
-        <fieldset>
-          <legend>{t("setup.step2Title")}</legend>
+        <div id="proxmox-error-message" class="error" hidden></div>
+        <div id="proxmox-success-message" class="success" hidden></div>
 
-          <div class="field">
-            <label for="admin-username">{t("setup.fields.adminUsername")}</label>
-            <input
-              type="text"
-              id="admin-username"
-              name="adminUsername"
-              placeholder={t("setup.fields.adminUsernamePlaceholder")}
-              required
-            />
-          </div>
-
-          <div class="field">
-            <label for="admin-password">{t("setup.fields.password")}</label>
-            <input
-              type="password"
-              id="admin-password"
-              name="adminPassword"
-              minlength="8"
-              required
-            />
-          </div>
-
-          <div class="field">
-            <label for="admin-password-confirm">{t("setup.fields.passwordConfirm")}</label>
-            <input
-              type="password"
-              id="admin-password-confirm"
-              name="adminPasswordConfirm"
-              minlength="8"
-              required
-            />
-          </div>
-        </fieldset>
-
-        <div id="error-message" class="error" hidden></div>
-        <div id="success-message" class="success" hidden></div>
-
-        <button type="submit" id="submit-btn">
+        <button type="submit" id="proxmox-submit-btn">
           {t("setup.submit")}
         </button>
       </form>
@@ -131,67 +175,150 @@ if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
   </div>
 
   <script>
-    const form = document.getElementById("setup-form") as HTMLFormElement;
-    const errorEl = document.getElementById("error-message")!;
-    const successEl = document.getElementById("success-message")!;
-    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+    import { API_URL, getToken } from "../lib/api.ts";
 
-    const msgPasswordMismatch = form.dataset.msgPasswordMismatch!;
-    const msgSubmitting = form.dataset.msgSubmitting!;
-    const msgSubmit = form.dataset.msgSubmit!;
-    const msgSuccess = form.dataset.msgSuccess!;
+    // ── Admin Form ──────────────────────────────────────────────────────────
+    const adminForm = document.getElementById("setup-admin-form") as HTMLFormElement;
+    if (adminForm) {
+      const errorEl = document.getElementById("admin-error-message")!;
+      const successEl = document.getElementById("admin-success-message")!;
+      const submitBtn = document.getElementById("admin-submit-btn") as HTMLButtonElement;
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      errorEl.hidden = true;
-      successEl.hidden = true;
+      const msgPasswordMismatch = adminForm.dataset.msgPasswordMismatch!;
+      const msgSubmitting = adminForm.dataset.msgSubmitting!;
+      const msgSubmit = adminForm.dataset.msgSubmit!;
+      const msgSuccess = adminForm.dataset.msgSuccess!;
 
-      const password = (document.getElementById("admin-password") as HTMLInputElement).value;
-      const confirm = (document.getElementById("admin-password-confirm") as HTMLInputElement).value;
+      adminForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.hidden = true;
+        successEl.hidden = true;
 
-      if (password !== confirm) {
-        errorEl.textContent = msgPasswordMismatch;
-        errorEl.hidden = false;
-        return;
-      }
+        const password = (document.getElementById("admin-password") as HTMLInputElement).value;
+        const confirm = (document.getElementById("admin-password-confirm") as HTMLInputElement).value;
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = msgSubmitting;
+        if (password !== confirm) {
+          errorEl.textContent = msgPasswordMismatch;
+          errorEl.hidden = false;
+          return;
+        }
 
-      const payload = {
-        proxmox: {
+        submitBtn.disabled = true;
+        submitBtn.textContent = msgSubmitting;
+
+        const payload = {
+          username: (document.getElementById("admin-username") as HTMLInputElement).value,
+          password,
+        };
+
+        try {
+          const res = await fetch("/api/setup/admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Admin setup failed");
+
+          // Save login token so subsequent API calls just work
+          localStorage.setItem("pve-cloud-token", data.token);
+          localStorage.setItem("pve-cloud-user", data.username);
+
+          successEl.textContent = "管理者アカウントを作成しました。";
+          successEl.hidden = false;
+          
+          // SPA transition to Proxmox form
+          setTimeout(() => {
+            adminForm.style.display = "none";
+            const pForm = document.getElementById("setup-proxmox-form");
+            if (pForm) {
+              pForm.style.display = "block";
+              // Reset any previous inputs if needed
+            }
+          }, 800);
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
+          errorEl.hidden = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = msgSubmit;
+        }
+      });
+    }
+
+    // ── Proxmox Form ────────────────────────────────────────────────────────
+    const proxmoxForm = document.getElementById("setup-proxmox-form") as HTMLFormElement;
+    if (proxmoxForm) {
+      const errorEl = document.getElementById("proxmox-error-message")!;
+      const successEl = document.getElementById("proxmox-success-message")!;
+      const submitBtn = document.getElementById("proxmox-submit-btn") as HTMLButtonElement;
+
+      const msgSubmitting = proxmoxForm.dataset.msgSubmitting!;
+      const msgSubmit = proxmoxForm.dataset.msgSubmit!;
+      const msgSuccess = proxmoxForm.dataset.msgSuccess!;
+
+      proxmoxForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.hidden = true;
+        successEl.hidden = true;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = msgSubmitting;
+
+        const payload = {
           host: (document.getElementById("pve-host") as HTMLInputElement).value,
           port: Number((document.getElementById("pve-port") as HTMLInputElement).value),
           tokenId: (document.getElementById("pve-token-id") as HTMLInputElement).value,
           tokenSecret: (document.getElementById("pve-token-secret") as HTMLInputElement).value,
           allowInsecure: (document.getElementById("pve-insecure") as HTMLInputElement).checked,
-        },
-        admin: {
-          username: (document.getElementById("admin-username") as HTMLInputElement).value,
-          password,
-        },
-      };
+        };
 
-      try {
-        const res = await fetch("/api/setup/initialize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+        try {
+          // Use the token for configuring proxmox since it's required
+          const token = localStorage.getItem("pve-cloud-token") || "";
+          const headers: HeadersInit = { "Content-Type": "application/json" };
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
+          const res = await fetch("/api/setup/proxmox", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Proxmox connection failed");
+
+          successEl.textContent = msgSuccess.replace("{version}", data.proxmoxVersion?.version ?? "");
+          successEl.hidden = false;
+          setTimeout(() => { window.location.href = "/"; }, 1500);
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
+          errorEl.hidden = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = msgSubmit;
+        }
+      });
+    }
+    // ── Copy Command Button ─────────────────────────────────────────────────────────
+    const copyBtn = document.getElementById("copy-cmd-btn") as HTMLButtonElement;
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        const cmdCode = document.getElementById("pve-setup-command")?.textContent || "";
+        navigator.clipboard.writeText(cmdCode).then(() => {
+          const textSpan = copyBtn.querySelector(".copy-text") as HTMLSpanElement;
+          const msgCopied = copyBtn.dataset.msgCopied!;
+          textSpan.textContent = msgCopied;
+          copyBtn.classList.add("copied");
+          setTimeout(() => {
+            textSpan.textContent = "";
+            copyBtn.classList.remove("copied");
+          }, 2500);
         });
+      });
+    }
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Setup failed");
-
-        successEl.textContent = msgSuccess.replace("{version}", data.proxmoxVersion?.version ?? "");
-        successEl.hidden = false;
-        setTimeout(() => { window.location.href = "/"; }, 1500);
-      } catch (err) {
-        errorEl.textContent = err instanceof Error ? err.message : "An error occurred";
-        errorEl.hidden = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = msgSubmit;
-      }
-    });
   </script>
 
   <style>
@@ -297,5 +424,68 @@ if (setupStatus?.status === "configured" && setupStatus.hasAdmin) {
     }
     button[type="submit"]:hover:not(:disabled) { background: #1d4ed8; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Command Card Styles */
+    .command-card {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .command-card-header {
+      background: #e2e8f0;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      color: #334155;
+    }
+    .command-card-body {
+      padding: 1rem;
+    }
+    .command-card-body p {
+      font-size: 0.85rem;
+      color: #475569;
+      margin: 0 0 0.8rem 0;
+    }
+    .command-block {
+      background: #1e293b;
+      border-radius: 6px;
+      padding: 1rem;
+      position: relative;
+    }
+    .command-block pre {
+      margin: 0;
+      overflow-x: auto;
+    }
+    .command-block code {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+    #copy-cmd-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f8fafc;
+      border-radius: 4px;
+      padding: 0.4rem 0.6rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    #copy-cmd-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    #copy-cmd-btn.copied {
+      background: #16a34a;
+      border-color: #15803d;
+      color: white;
+    }
   </style>
 </Layout>
