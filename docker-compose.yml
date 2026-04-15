@@ -1,15 +1,30 @@
 services:
-  proxmox:
-    image: ghcr.io/longqt-sea/proxmox-ve:latest
-    container_name: pve-cloud-proxmox
-    privileged: true
-    ports:
-      - "8006:8006"
-    environment:
-      - HOSTNAME=pve
-    volumes:
-      - proxmox-data:/var/lib/vz
+  pve-1:
+    image: ghcr.io/longqt-sea/proxmox-ve
+    container_name: pve-1
+    hostname: pve-1
     restart: unless-stopped
-
-volumes:
-  proxmox-data:
+    stdin_open: true
+    tty: true
+    privileged: true
+    cgroup: private
+    device_cgroup_rules:
+      - "a *:* rwm"
+    cap_add:
+      - ALL
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+    environment:
+      - PASSWORD=123
+    ports:
+      - "2222:22"
+      - "3128:3128"
+      - "8006:8006"
+    volumes:
+      - /usr/lib/modules:/usr/lib/modules:ro
+      - /sys/kernel/security:/sys/kernel/security
+      - /dev/vfio:/dev/vfio
+      - ./VM-Backup:/var/lib/vz/dump
+      - ./ISOs:/var/lib/vz/template/iso
